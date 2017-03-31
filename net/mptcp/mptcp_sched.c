@@ -2,6 +2,7 @@
 
 #include <linux/module.h>
 #include <net/mptcp.h>
+#include <time.h>
 
 static DEFINE_SPINLOCK(mptcp_sched_list_lock);
 static LIST_HEAD(mptcp_sched_list);
@@ -133,6 +134,41 @@ bool subflow_is_active(const struct tcp_sock *tp)
 }
 EXPORT_SYMBOL_GPL(subflow_is_active);
 
+#ifdef CONFIG_MPTCP_ENERGY
+double pow(double base, double ex);
+
+double nth_root(double A, int n) {
+    const int K = 6;
+    double x[K];
+    x[0] = 1;
+    x[1] = 1;
+    x[2] = 1;
+    x[3] = 1;
+    x[4] = 1;
+    x[5] = 1;
+    for (int k = 0; k < K - 1; k++)
+        x[k + 1] = (1.0 / n) * ((n - 1) * x[k] + A / pow(x[k], n - 1));
+    return x[K-1];
+}
+
+double pow(double base, double ex){
+    if (base == 0)
+        return 0;
+    if (ex == 0){
+        return 1;
+    }else if( ex < 0){
+        return 1 / pow(base, -ex);
+    }else if (ex > 0 && ex < 1){
+        return nth_root(base, 1/ex);
+    }else if ((int)ex % 2 == 0){
+        double half_pow = pow(base, ex/2);
+        return half_pow * half_pow;
+    }else{
+        return base * pow(base, ex - 1);
+    }
+}
+#endif
+
 /* Generic function to iterate over used and unused subflows and to select the
  * best one
  */
@@ -145,6 +181,7 @@ static struct sock
 	u32 min_srtt = 0xffffffff;
 	bool found_unused = false;
 	bool found_unused_una = false;
+    double min_energy_per_byte = 9999999.0;
 	struct sock *sk;
 
 	mptcp_for_each_sk(mpcb, sk) {
@@ -184,11 +221,95 @@ static struct sock
 			found_unused = true;
 		}
 
-		if (tp->srtt_us < min_srtt) {
-			min_srtt = tp->srtt_us;
-			bestsk = sk;
-		}
+#ifdef CONFIG_MPTCP_ENERGY
+        if((tp->mptcp->mptcp_iface_alpha != 0.0 && tp->mptcp->mptcp_iface_beta != 0.0)
+            && (mpcb->mptcp_pref_rtt == 0)
+            && (mpcb->mptcp_pref_throughput > 0 || mpcb->mptcp_pref_data > 0)){
+
+            tp->mptcp->mptcp_iface_cur_energy_per_byte = tp->mptcp->mptcp_iface_alpha*pow(((double) tp->rcv_wnd / tp->srtt_us),tp->mptcp->mptcp_iface_beta);
+
+            if(tp->mptcp->mptcp_iface_cur_energy_per_byte < min_energy_per_byte){
+                min_energy_per_byte = tp->mptcp->mptcp_iface_cur_energy_per_byte;
+                bestsk = sk;
+            }
+        }else{
+            if (tp->srtt_us < min_srtt) {
+                min_srtt = tp->srtt_us;
+                bestsk = sk;
+            }
+        }
+#endif
+
+#ifndef CONFIG_MPTCP_ENERGY
+        if (tp->srtt_us < min_srtt) {
+            min_srtt = tp->srtt_us;
+            bestsk = sk;
+        }
+#endif
 	}
+
+#ifdef CONFIG_MPTCP_ENERGY
+    if((mpcb->mptcp_pref_rtt == 0)
+       && (mpcb->mptcp_pref_throughput > 0 || mpcb->mptcp_pref_data > 0)){
+
+        struct tcp_sock *tp_best = tcp_sk(bestsk);
+
+        /* If the best socket is off because the tail-time was ran out */
+        if(((u32) time(0)) - tp_best->lsndtime > tp_best->mptcp->mptcp_iface_tail){
+            double best_deviance_tail = 100.0;
+            double best_deviance_promotion = 100.0;
+            double cur_deviance = 0.0;
+            struct sock *bestsk_promotion = NULL;
+            bool was_run = false;
+
+            mptcp_for_each_sk(mpcb, sk) {
+                struct tcp_sock *tp = tcp_sk(sk);
+
+                if(tp == tp_best)
+                    continue;
+
+                if((tp->mptcp->mptcp_iface_alpha == 0.0 || tp->mptcp->mptcp_iface_beta == 0.0))
+                    continue;
+
+                was_run = true;
+
+                if(tp_best->lsndtime < tp->lsndtime){
+                    /* Check if the last used device currently active, because it's tail-time
+                     * isn't ran out
+                     */
+                    cur_deviance = (tp->mptcp->mptcp_iface_cur_energy_per_byte * MPTCP_IFACE_THRESHOLD) / tp_best->mptcp->mptcp_iface_cur_energy_per_byte;
+                    if(((u32) time(0)) - tp->lsndtime <= tp->mptcp->mptcp_iface_tail){
+                        if((cur_deviance < best_deviance_tail)
+                            && (tp->mptcp->mptcp_iface_cur_energy_per_byte * MPTCP_IFACE_THRESHOLD < tp_best->mptcp->mptcp_iface_cur_energy_per_byte)){
+
+                            best_deviance_tail = cur_deviance;
+                            bestsk = sk;
+                        }
+                    }else{
+                        /*
+                         * Both devices had not enough long tail-times, the time was ran out.
+                         * Took the device with lowest promotion-time, if it is not to bad at
+                         * the energy per byte
+                         */
+                        if(tp->mptcp->mptcp_iface_promotion < tp_best->mptcp->mptcp_iface_promotion
+                           && (tp->mptcp->mptcp_iface_cur_energy_per_byte * MPTCP_IFACE_THRESHOLD < tp_best->mptcp->mptcp_iface_cur_energy_per_byte)
+                           && (cur_deviance < best_deviance_promotion)){
+
+                            best_deviance_promotion = cur_deviance;
+                            bestsk_promotion = sk;
+                        }
+                    }
+                }
+            }
+
+            if(best_deviance_tail == 100.0 && best_deviance_promotion != 100.0){
+                bestsk = bestsk_promotion;
+            }else if(best_deviance_tail == 100.0 && best_deviance_promotion == 100.0 && was_run){
+                /* Do currently nothing in this case. For further research ... (maybe only adjusting the thresholds? )*/
+            }
+        }
+    }
+#endif
 
 	if (bestsk) {
 		/* The force variable is used to mark the returned sk as

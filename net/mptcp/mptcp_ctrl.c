@@ -1255,6 +1255,16 @@ int mptcp_add_sock(struct sock *meta_sk, struct sock *sk, u8 loc_id, u8 rem_id,
 	tp->mpcb = mpcb;
 	tp->meta_sk = meta_sk;
 
+#ifdef CONFIG_MPTCP_ENERGY
+    tp->mpcb->mptcp_pref_rtt = 0;
+    tp->mpcb->mptcp_pref_throughput = 0;
+    tp->mpcb->mptcp_pref_data = 0;
+    tp->mptcp->mptcp_iface_alpha = 0.0;
+    tp->mptcp->mptcp_iface_beta = 0.0;
+    tp->mptcp->mptcp_iface_promotion = 0.0;
+    tp->mptcp->mptcp_iface_tail = 0.0;
+#endif
+
 	if (!sock_flag(sk, SOCK_MPTCP)) {
 		mptcp_enable_static_key();
 		sock_set_flag(sk, SOCK_MPTCP);

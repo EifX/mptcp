@@ -210,6 +210,15 @@ struct mptcp_tcp_sock {
 
 	/* HMAC of the third ack */
 	char sender_mac[20];
+
+#ifdef CONFIG_MPTCP_ENERGY
+    /* Interface-Status */
+    double mptcp_iface_alpha:0.0,
+		   mptcp_iface_beta:0.0,
+           mptcp_iface_promotion:0.0,
+           mptcp_iface_tail:0.0,
+           mptcp_iface_cur_energy_per_byte:0.0;
+#endif
 };
 
 struct mptcp_tw {
@@ -348,6 +357,13 @@ struct mptcp_cb {
 	int orig_sk_rcvbuf;
 	int orig_sk_sndbuf;
 	u32 orig_window_clamp;
+
+#ifdef CONFIG_MPTCP_ENERGY
+    /* App-Status*/
+    u16 mptcp_pref_data:0,
+        mptcp_pref_throughput:0,
+        mptcp_pref_rtt:0;
+#endif
 };
 
 #define MPTCP_VERSION_0 0
@@ -427,6 +443,9 @@ struct mptcp_cb {
 #define MPTCP_SUB_LEN_FCLOSE	12
 #define MPTCP_SUB_LEN_FCLOSE_ALIGN	12
 
+#ifdef CONFIG_MPTCP_ENERGY
+#define MPTCP_IFACE_THRESHOLD 0.9
+#endif
 
 #define OPTION_MPTCP		(1 << 5)
 
