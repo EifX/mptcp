@@ -213,11 +213,11 @@ struct mptcp_tcp_sock {
 
 #ifdef CONFIG_MPTCP_ENERGY
     /* Interface-Status */
-    double mptcp_iface_alpha:0.0,
-		   mptcp_iface_beta:0.0,
-           mptcp_iface_promotion:0.0,
-           mptcp_iface_tail:0.0,
-           mptcp_iface_cur_energy_per_byte:0.0;
+    double mptcp_iface_alpha;
+    double mptcp_iface_beta;
+    double mptcp_iface_promotion;
+    double mptcp_iface_tail;
+    double mptcp_iface_cur_energy_per_byte;
 #endif
 };
 
@@ -360,9 +360,9 @@ struct mptcp_cb {
 
 #ifdef CONFIG_MPTCP_ENERGY
     /* App-Status*/
-    u16 mptcp_pref_data:0,
-        mptcp_pref_throughput:0,
-        mptcp_pref_rtt:0;
+    u16 mptcp_pref_data;
+    u16 mptcp_pref_throughput;
+    u16 mptcp_pref_rtt;
 #endif
 };
 
