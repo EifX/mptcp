@@ -2,7 +2,7 @@
 
 #include <linux/module.h>
 #include <net/mptcp.h>
-#include <time.h>
+#include <linux/time.h>
 
 static DEFINE_SPINLOCK(mptcp_sched_list_lock);
 static LIST_HEAD(mptcp_sched_list);
