@@ -140,13 +140,14 @@ double pow(double base, double ex);
 double nth_root(double A, int n) {
     const int K = 6;
     double x[K];
+	int k;
     x[0] = 1;
     x[1] = 1;
     x[2] = 1;
     x[3] = 1;
     x[4] = 1;
     x[5] = 1;
-    for (int k = 0; k < K - 1; k++)
+    for (k = 0; k < K - 1; k++)
         x[k + 1] = (1.0 / n) * ((n - 1) * x[k] + A / pow(x[k], n - 1));
     return x[K-1];
 }
@@ -253,9 +254,11 @@ static struct sock
        && (mpcb->mptcp_pref_throughput > 0 || mpcb->mptcp_pref_data > 0)){
 
         struct tcp_sock *tp_best = tcp_sk(bestsk);
+        struct timespec tspec;
+        getnstimeofday(&tspec);
 
         /* If the best socket is off because the tail-time was ran out */
-        if(((u32) time(0)) - tp_best->lsndtime > tp_best->mptcp->mptcp_iface_tail){
+        if(tspec.tv_sec - tp_best->lsndtime > tp_best->mptcp->mptcp_iface_tail){
             double best_deviance_tail = 100.0;
             double best_deviance_promotion = 100.0;
             double cur_deviance = 0.0;
@@ -278,7 +281,7 @@ static struct sock
                      * isn't ran out
                      */
                     cur_deviance = (tp->mptcp->mptcp_iface_cur_energy_per_byte * MPTCP_IFACE_THRESHOLD) / tp_best->mptcp->mptcp_iface_cur_energy_per_byte;
-                    if(((u32) time(0)) - tp->lsndtime <= tp->mptcp->mptcp_iface_tail){
+                    if(tspec.tv_sec - tp->lsndtime <= tp->mptcp->mptcp_iface_tail){
                         if((cur_deviance < best_deviance_tail)
                             && (tp->mptcp->mptcp_iface_cur_energy_per_byte * MPTCP_IFACE_THRESHOLD < tp_best->mptcp->mptcp_iface_cur_energy_per_byte)){
 
