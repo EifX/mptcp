@@ -135,6 +135,7 @@ bool subflow_is_active(const struct tcp_sock *tp)
 EXPORT_SYMBOL_GPL(subflow_is_active);
 
 #ifdef CONFIG_MPTCP_ENERGY
+/*
 double pow(double base, double ex);
 
 double nth_root(double A, int n) {
@@ -167,6 +168,11 @@ double pow(double base, double ex){
     }else{
         return base * pow(base, ex - 1);
     }
+}
+*/
+// only a stub
+int pow(double base, double ex){
+    return (int) base*(-ex)*0.0001;
 }
 #endif
 
