@@ -78,6 +78,13 @@ menuconfig MPTCP_SCHED_ADVANCED
 
 if MPTCP_SCHED_ADVANCED
 
+config MPTCP_ENERGY
+	bool "MPTCP default (with energy-efficiency)"
+	depends on (MPTCP=y)
+	---help---
+	  This scheduler is like the default scheduler, but sending first on
+	  the subflow with the best energy efficiency
+
 config MPTCP_ROUNDROBIN
 	tristate "MPTCP Round-Robin"
 	depends on (MPTCP=y)
@@ -104,6 +111,12 @@ choice
 		  This is the default scheduler, sending first on the subflow
 		  with the lowest RTT.
 
+	config DEFAULT_SCHEDULER_ENERGY
+		bool "Default with Energy-Efficiency" if MPTCP_ENERGY=y
+		---help---
+		  This scheduler is like the default scheduler, but sending first on
+		  the subflow with the best energy efficiency
+
 	config DEFAULT_ROUNDROBIN
 		bool "Round-Robin" if MPTCP_ROUNDROBIN=y
 		---help---
@@ -123,6 +136,7 @@ config DEFAULT_MPTCP_SCHED
 	string
 	depends on (MPTCP=y)
 	default "default" if DEFAULT_SCHEDULER
+	default "default_energy" if DEFAULT_SCHEDULER_ENERGY
 	default "roundrobin" if DEFAULT_ROUNDROBIN
 	default "redundant" if DEFAULT_REDUNDANT
 	default "default"
