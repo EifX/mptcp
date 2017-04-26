@@ -1,43 +1,73 @@
-#include <linux/module.h>
 #include <linux/kobject.h>
+#include <linux/string.h>
 #include <linux/sysfs.h>
+#include <linux/module.h>
 #include <linux/init.h>
-#include <linux/fs.h>
 
 
-static struct kobject *mptcp_energy_obj;
-static int iface_count;
+static int iface_main;
+static int iface_backup;
 
-static ssize_t iface_count_show(struct kobject *kobj, struct kobj_attribute *attr,char *buf)
+static ssize_t iface_main_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", iface_count);
+    return sprintf(buf, "%d\n", iface_main);
 }
 
-static ssize_t iface_count_store(struct kobject *kobj, struct kobj_attribute *attr,char *buf, size_t count)
+static ssize_t iface_main_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
 {
-    sscanf(buf, "%du", &iface_count);
+    sscanf(buf, "%du", &iface_main);
     return count;
 }
 
-static struct kobj_attribute mptcp_energy_attribute = __ATTR(iface_count,0666,iface_count_show,iface_count_store);
+static ssize_t iface_backup_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", iface_backup);
+}
+
+static ssize_t iface_backup_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+    sscanf(buf, "%du", &iface_backup);
+    return count;
+}
+
+static struct kobj_attribute iface_main_attribute =
+        __ATTR(iface_main, 0660, iface_main_show, iface_main_store);
+static struct kobj_attribute iface_backup_attribute =
+        __ATTR(iface_backup, 0660, iface_backup_show, iface_backup_store);
+
+static struct attribute *attrs[] = {
+        &iface_main_attribute.attr,
+        &iface_backup_attribute.attr,
+        NULL,
+};
+
+static struct attribute_group attr_group = {
+        .attrs = attrs,
+};
+
+static struct kobject *mptcp_energy_kobj;
 
 static int __init energy_register(void)
 {
     int error = 0;
 
-    mptcp_energy_obj = kobject_create_and_add("mptcp_energy", kernel_kobj);
+    mptcp_energy_kobj = kobject_create_and_add("mptcp_energy", kernel_kobj);
 
-    if(!mptcp_energy_obj)
+    if(!mptcp_energy_kobj)
         return -ENOMEM;
 
-    error = sysfs_create_file(mptcp_energy_obj, &mptcp_energy_attribute.attr);
+    error = sysfs_create_group(mptcp_energy_kobj, &attr_group);
+    if(error)
+    {
+        kobject_put(mptcp_energy_kobj);
+    }
 
 	return error;
 }
 
 static void energy_unregister(void)
 {
-    kobject_put(mptcp_energy_obj);
+    kobject_put(mptcp_energy_kobj);
 }
 
 module_init(energy_register);

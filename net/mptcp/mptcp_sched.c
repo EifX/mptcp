@@ -150,6 +150,7 @@ static struct sock
 	mptcp_for_each_sk(mpcb, sk) {
 		struct tcp_sock *tp = tcp_sk(sk);
 		bool unused = false;
+        printk(KERN_DEBUG "MPTCP-Packet: %pI4 %d\n",sk->__sk_common.skc_daddr, be32_to_cpu(sk->__sk_common.skc_daddr));
 
 		/* First, we choose only the wanted sks */
 		if (!(*selector)(tp))
