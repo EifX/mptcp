@@ -133,19 +133,31 @@ bool subflow_is_active(const struct tcp_sock *tp)
 }
 EXPORT_SYMBOL_GPL(subflow_is_active);
 
+#ifdef CONFIG_MPTCP_ENERGY
+extern u32 mptcp_energy_iface_main_func(void);
+extern u32 mptcp_energy_iface_backup_func(void);
+#endif
+
 /* Generic function to iterate over used and unused subflows and to select the
  * best one
  */
 static struct sock
 *get_subflow_from_selectors(struct mptcp_cb *mpcb, struct sk_buff *skb,
 			    bool (*selector)(const struct tcp_sock *),
-			    bool zero_wnd_test, bool *force)
+			    bool zero_wnd_test, bool *force, bool is_main_iface)
 {
 	struct sock *bestsk = NULL;
 	u32 min_srtt = 0xffffffff;
 	bool found_unused = false;
 	bool found_unused_una = false;
 	struct sock *sk;
+
+#ifdef CONFIG_MPTCP_ENERGY
+    u32 iface_main = mptcp_energy_iface_main_func();
+    u32 iface_backup = mptcp_energy_iface_backup_func();
+
+    printk(KERN_DEBUG "MPTCP-Energy: Main %d Backup %d\n", iface_main, iface_backup);
+#endif
 
 	mptcp_for_each_sk(mpcb, sk) {
 		struct tcp_sock *tp = tcp_sk(sk);
@@ -184,6 +196,14 @@ static struct sock
 			}
 			found_unused = true;
 		}
+
+#ifdef CONFIG_MPTCP_ENERGY
+        if ((is_main_iface == true && iface_main == be32_to_cpu(sk->__sk_common.skc_daddr)) ||
+                (is_main_iface == false && iface_backup == be32_to_cpu(sk->__sk_common.skc_daddr))) {
+            bestsk = sk;
+            break;
+        }
+#endif
 
 		if (tp->srtt_us < min_srtt) {
 			min_srtt = tp->srtt_us;
@@ -246,7 +266,7 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 
 	/* Find the best subflow */
 	sk = get_subflow_from_selectors(mpcb, skb, &subflow_is_active,
-					zero_wnd_test, &force);
+					zero_wnd_test, &force, true);
 	if (force)
 		/* one unused active sk or one NULL sk when there is at least
 		 * one temporally unavailable unused active sk
@@ -254,7 +274,7 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 		return sk;
 
 	sk = get_subflow_from_selectors(mpcb, skb, &subflow_is_backup,
-					zero_wnd_test, &force);
+					zero_wnd_test, &force, false);
 	if (!force && skb)
 		/* one used backup sk or one NULL sk where there is no one
 		 * temporally unavailable unused backup sk

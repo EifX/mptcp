@@ -4,9 +4,31 @@
 #include <linux/module.h>
 #include <linux/init.h>
 
+/*
+ * History:
+ * - https://pradheepshrinivasan.github.io/2015/07/02/Creating-an-simple-sysfs/
+ *   Not bad, but only one file
+ * - https://github.com/spotify/linux/blob/master/samples/kobject/kobject-example.c
+ *   With sysfs-groups but problems with access-rights
+ * - https://github.com/BotCyborg/adk-driver-skeleton/commit/b19a0e8aa21ccc7e4c0cd5c0e1882f49c0749cee
+ *   Give's idea to deal with new access-rights-restrictions from commit:
+ *   https://github.com/torvalds/linux/commit/58f86cc89c3372d3e61d5b71e5513ec5a0b02848
+ */
 
-static int iface_main;
-static int iface_backup;
+static u32 iface_main;
+static u32 iface_backup;
+
+static u32 mptcp_energy_iface_main_func(void)
+{
+    return iface_main;
+}
+EXPORT_SYMBOL_GPL(mptcp_energy_iface_main_func);
+
+static u32 mptcp_energy_iface_backup_func(void)
+{
+    return iface_backup;
+}
+EXPORT_SYMBOL_GPL(mptcp_energy_iface_backup_func);
 
 static ssize_t iface_main_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
