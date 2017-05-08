@@ -3,6 +3,7 @@
 #include <linux/sysfs.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <net/mptcp.h>
 
 /*
  * History:
@@ -18,13 +19,13 @@
 static u32 iface_main;
 static u32 iface_backup;
 
-static u32 mptcp_energy_iface_main_func(void)
+u32 mptcp_energy_iface_main_func(void)
 {
     return iface_main;
 }
 EXPORT_SYMBOL_GPL(mptcp_energy_iface_main_func);
 
-static u32 mptcp_energy_iface_backup_func(void)
+u32 mptcp_energy_iface_backup_func(void)
 {
     return iface_backup;
 }

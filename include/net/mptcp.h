@@ -924,6 +924,10 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 				   bool zero_wnd_test);
 extern struct mptcp_sched_ops mptcp_sched_default;
 
+/* MPTCP-Energy-Things */
+u32 mptcp_energy_iface_main_func(void);
+u32 mptcp_energy_iface_backup_func(void);
+
 /* Initializes function-pointers and MPTCP-flags */
 static inline void mptcp_init_tcp_sock(struct sock *sk)
 {
