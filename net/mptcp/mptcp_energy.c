@@ -21,18 +21,21 @@ static u32 iface_backup;
 
 u32 mptcp_energy_iface_main_func(void)
 {
+    printk("MPTCP-Energy: READ SYMBOL iface_main %d\n",iface_main);
     return iface_main;
 }
 EXPORT_SYMBOL_GPL(mptcp_energy_iface_main_func);
 
 u32 mptcp_energy_iface_backup_func(void)
 {
+    printk("MPTCP-Energy: READ SYMBOL iface_backup %d\n",iface_backup);
     return iface_backup;
 }
 EXPORT_SYMBOL_GPL(mptcp_energy_iface_backup_func);
 
 static ssize_t iface_main_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
+    printk("MPTCP-Energy: READ SYSFS iface_main %d\n",iface_main);
     return sprintf(buf, "%d\n", iface_main);
 }
 
@@ -44,6 +47,7 @@ static ssize_t iface_main_store(struct kobject *kobj, struct kobj_attribute *att
 
 static ssize_t iface_backup_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
+    printk("MPTCP-Energy: READ SYSFS iface_backup %d\n",iface_main);
     return sprintf(buf, "%d\n", iface_backup);
 }
 
@@ -73,6 +77,7 @@ static struct kobject *mptcp_energy_kobj;
 static int __init energy_register(void)
 {
     int error = 0;
+printk("MPTCP-Energy: MODULE LOAD\n");
 
     mptcp_energy_kobj = kobject_create_and_add("mptcp_energy", kernel_kobj);
 
@@ -90,6 +95,8 @@ static int __init energy_register(void)
 
 static void energy_unregister(void)
 {
+printk("MPTCP-Energy: MODULE EXIT\n");
+
     kobject_put(mptcp_energy_kobj);
 }
 

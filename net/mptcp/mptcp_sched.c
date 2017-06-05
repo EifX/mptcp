@@ -151,18 +151,19 @@ static struct sock
 	bool found_unused = false;
 	bool found_unused_una = false;
 	struct sock *sk;
+	printk("MPTCP-Energy: Maybe alive?\n");
 
 #ifdef CONFIG_MPTCP_ENERGY
     u32 iface_main = mptcp_energy_iface_main_func();
     u32 iface_backup = mptcp_energy_iface_backup_func();
 
-    printk(KERN_DEBUG "MPTCP-Energy: Main %d Backup %d\n", iface_main, iface_backup);
+    printk("MPTCP-Energy: Main %d Backup %d\n", iface_main, iface_backup);
 #endif
 
 	mptcp_for_each_sk(mpcb, sk) {
 		struct tcp_sock *tp = tcp_sk(sk);
 		bool unused = false;
-        printk(KERN_DEBUG "MPTCP-Packet: %pI4 %d\n",sk->__sk_common.skc_daddr, be32_to_cpu(sk->__sk_common.skc_daddr));
+        printk("MPTCP-Packet: %pI4 %d\n",sk->__sk_common.skc_daddr, be32_to_cpu(sk->__sk_common.skc_daddr));
 
 		/* First, we choose only the wanted sks */
 		if (!(*selector)(tp))
@@ -245,12 +246,14 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 	struct mptcp_cb *mpcb = tcp_sk(meta_sk)->mpcb;
 	struct sock *sk;
 	bool force;
+printk("MPTCP-Energy: get_available_subflow\n");
 
 	/* if there is only one subflow, bypass the scheduling function */
 	if (mpcb->cnt_subflows == 1) {
 		sk = (struct sock *)mpcb->connection_list;
 		if (!mptcp_is_available(sk, skb, zero_wnd_test))
 			sk = NULL;
+printk("MPTCP-Energy: get_available_subflow - return-mark 1\n");
 		return sk;
 	}
 
@@ -259,19 +262,23 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 	    skb && mptcp_is_data_fin(skb)) {
 		mptcp_for_each_sk(mpcb, sk) {
 			if (tcp_sk(sk)->mptcp->path_index == mpcb->dfin_path_index &&
-			    mptcp_is_available(sk, skb, zero_wnd_test))
+			    mptcp_is_available(sk, skb, zero_wnd_test)){
+printk("MPTCP-Energy: get_available_subflow - return-mark 2\n");
 				return sk;
+}
 		}
 	}
 
 	/* Find the best subflow */
 	sk = get_subflow_from_selectors(mpcb, skb, &subflow_is_active,
 					zero_wnd_test, &force, true);
-	if (force)
+	if (force){
 		/* one unused active sk or one NULL sk when there is at least
 		 * one temporally unavailable unused active sk
 		 */
+printk("MPTCP-Energy: get_available_subflow - return-mark 3\n");
 		return sk;
+}
 
 	sk = get_subflow_from_selectors(mpcb, skb, &subflow_is_backup,
 					zero_wnd_test, &force, false);
@@ -283,6 +290,7 @@ struct sock *get_available_subflow(struct sock *meta_sk, struct sk_buff *skb,
 		 * sks, so clean the path mask
 		 */
 		TCP_SKB_CB(skb)->path_mask = 0;
+printk("MPTCP-Energy: get_available_subflow - return-mark 4\n");
 	return sk;
 }
 EXPORT_SYMBOL_GPL(get_available_subflow);
@@ -500,6 +508,7 @@ static struct mptcp_sched_ops *mptcp_sched_find(const char *name)
 int mptcp_register_scheduler(struct mptcp_sched_ops *sched)
 {
 	int ret = 0;
+printk("MPTCP-Energy: mptcp_register_scheduler\n");
 
 	if (!sched->get_subflow || !sched->next_segment)
 		return -EINVAL;
@@ -549,6 +558,7 @@ void mptcp_get_default_scheduler(char *name)
 
 int mptcp_set_default_scheduler(const char *name)
 {
+printk("MPTCP-Energy: mptcp_set_default_scheduler\n");
 	struct mptcp_sched_ops *sched;
 	int ret = -ENOENT;
 
@@ -578,7 +588,7 @@ int mptcp_set_default_scheduler(const char *name)
 void mptcp_init_scheduler(struct mptcp_cb *mpcb)
 {
 	struct mptcp_sched_ops *sched;
-
+printk("MPTCP-Energy: mptcp_init_scheduler\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(sched, &mptcp_sched_list, list) {
 		if (try_module_get(sched->owner)) {
